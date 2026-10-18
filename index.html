@@ -6,6 +6,8 @@
 <title>福建奶龙中学 · 开屏</title>
 <meta name="description" content="开屏动画（个人兴趣向同人站点，非官方）。点击进入晋江市季延中学官网。">
 <meta property="og:title" content="福建奶龙中学 · 开屏">
+<link rel="icon" href="assets/icon.png" type="image/png">
+
 <style>
   /* ==========================================================================
      1. 复古艺术色彩体系与排版变量 (Vintage Editorial Tokens)
@@ -431,7 +433,7 @@
     to { transform: translateY(0); opacity: 1; }
   }
 
-  /* 卡片右侧溢出的吉祥物立绘 (mascot_1.png) */
+  /* 卡片右侧溢出的吉祥物立绘 (mascot_1.png) - 提升至 z-index: 20 确保位于整个画面的最顶层，不会被任何边框遮挡 */
   #heroMascot {
     position: absolute;
     right: -135px;
@@ -440,7 +442,7 @@
     height: auto;
     object-fit: contain;
     pointer-events: none;
-    z-index: 6;
+    z-index: 20;
     filter: drop-shadow(-8px 12px 24px rgba(35, 24, 19, 0.28));
     animation: mascotFloat 7s 1.2s ease-in-out infinite;
   }
@@ -629,11 +631,7 @@
   }
 
   /* ==========================================================================
-     7. 形象卡：(已废弃独立挂载，改为 #hero 内嵌溢出层叠)
-     ========================================================================== */
-
-  /* ==========================================================================
-     8. 弹幕浮层：复古实心纸条签风格（高对比度、无黑底、不透明）
+     7. 弹幕浮层：复古实心纸条签风格（高对比度、无黑底、不透明、自带固定主题）
      ========================================================================== */
   #danmaku {
     position: fixed;
@@ -641,9 +639,6 @@
     z-index: 4;
     pointer-events: none;
     overflow: hidden;
-  }
-  #danmaku::after {
-    display: none;
   }
 
   .dm {
@@ -664,12 +659,12 @@
     box-shadow: 2px 3px 0 rgba(35, 24, 19, 0.12);
     text-shadow: none;
     filter: none;
+    opacity: 0.96;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
   }
 
-  /* 固定复古配色主题类（在字幕生成时即绑定固定类名，不再使用 :nth-child 动态伪类，
-     从而避免旧字幕移除出 DOM 时导致屏幕上其余字幕的序号改变、颜色跳来跳去） */
+  /* 固定复古配色主题类（由 JS 在创建时随机指定，DOM 销毁前永不改变，彻底杜绝跳变 Bug） */
   .dm-theme-0 {
     background-color: #f7f1e5;
     color: #231813;
@@ -702,13 +697,13 @@
   }
 
   /* ==========================================================================
-     8.5 右上角复古留声机音符按钮 (Vintage Phonograph Music Toggle)
+     8. 右上角复古留声机音符按钮 (Vintage Phonograph Music Toggle)
      ========================================================================== */
   #musicBtn {
     position: fixed;
     top: 38px;
     right: 38px;
-    z-index: 10;
+    z-index: 25;
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -850,10 +845,11 @@
     #deck-m { display: block; top: 66%; width: 78vw; max-width: 340px; }
 
     #heroMascot {
-      right: -30px;
+      right: -25px;
       bottom: -10px;
-      width: clamp(180px, 46vw, 240px);
-      opacity: 0.95;
+      width: clamp(170px, 44vw, 220px);
+      opacity: 0.98;
+      z-index: 20; /* 确保移动端吉祥物同样位于最高层 */
     }
 
     #musicBtn {
@@ -946,19 +942,6 @@
       letter-spacing: 0.08em;
       margin-top: 8px;
       padding: 3px 8px;
-    }
-
-    #mascot {
-      left: 50%;
-      top: 66%;
-      width: min(64vw, 260px);
-    }
-    #mascot.on .inner {
-      padding: 10px 10px 28px 10px;
-    }
-    #mascot.on .inner::after {
-      font-size: 8.5px;
-      bottom: 8px;
     }
 
     #actions {
@@ -1061,7 +1044,6 @@ const CONFIG = {
   DEFAULT_TARGET: 'http://www.jjjy.net/',
   SCHOOL_NAME: '福建奶龙中学',
   DM_START: 8400,    // 弹幕启动毫秒
-  DM_COLORS: ['#231813', '#8e2c1d', '#3b4a2b', '#5c3824', '#6e2217'],
   MOBILE_SLIDE_MS: 1450, // 手机端轮播速度
   SONG_ID: '1838130295',
   SONG_START_SEC: 187
@@ -1272,13 +1254,15 @@ function dmLaneTop(lane, laneH) {
   return Math.round((base + lane * laneH) * window.innerHeight);
 }
 
-function spawnDanmaku(text, color, size, lane, laneH, dur) {
+function spawnDanmaku(text, size, lane, laneH, dur) {
   if (!dmLayer || dmLive.length > DM_MAX) return;
   const el = document.createElement('div');
-  el.className = 'dm';
+  
+  const themeIdx = Math.floor(Math.random() * 5);
+  el.className = `dm dm-theme-${themeIdx}`;
+  
   el.textContent = text;
   el.style.top = `${dmLaneTop(lane, laneH)}px`;
-  el.style.color = color;
   el.style.fontSize = `${size || (isPhone() ? 13.5 : 19)}px`;
   dmLayer.appendChild(el);
 
@@ -1318,10 +1302,9 @@ function startDanmaku() {
     if (best < 0) return false;
 
     const item = danmakuData[dmIdx % danmakuData.length];
-    const color = CONFIG.DM_COLORS[dmIdx % CONFIG.DM_COLORS.length];
     const dur = isPhone() ? 5.6 + Math.random() * 3.2 : 7 + Math.random() * 4.5;
 
-    spawnDanmaku(item.t, color, item.size, best, laneH, dur);
+    spawnDanmaku(item.t, item.size, best, laneH, dur);
 
     const y = dmLaneTop(best, laneH) / window.innerHeight;
     const centerDist = Math.abs(y - 0.47);
@@ -1330,7 +1313,6 @@ function startDanmaku() {
       const node = dmLive[dmLive.length - 1];
       if (node) {
         node.style.opacity = dim.toFixed(2);
-        node.style.background = 'transparent';
       }
     }
 
